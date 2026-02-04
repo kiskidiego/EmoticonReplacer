@@ -1,10 +1,10 @@
-# ✨ Emoticon Replacer
+# Emoticon Replacer
 
 A lightweight, background utility for Windows that lets you search, scrape, and insert Japanese kaomojis and emoticons into any text field using simple keyboard triggers.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 1.  **Launch the App**: Run the script. A small icon will appear in your **System Tray** (bottom right near the clock).
 2.  **The Trigger**: Press the semicolon key (**`;`**) once to start a search.
@@ -14,7 +14,7 @@ A lightweight, background utility for Windows that lets you search, scrape, and 
 
 ---
 
-## ⌨️ Keyboard Controls
+## Keyboard Controls
 
 | Action | Key |
 | :--- | :--- |
@@ -25,21 +25,6 @@ A lightweight, background utility for Windows that lets you search, scrape, and 
 | **Confirm / Paste** | `Space` |
 | **Cancel / Close** | `Esc` |
 | **Add Custom Emote** | `Ctrl + Alt + A` |
-
----
-
-## 🛠 Features
-
-### 🔍 Live Web Search
-The app automatically scrapes **EmojiDB** for live results. It filters out incompatible characters and cleans up formatting so your kaomojis look perfect in Discord, Slack, or browser-based apps.
-
-### 🧠 Smart Memory (Local Database)
-The app creates an `emoticon_replacer.json` file automatically.
-* **Favorites First**: It remembers which emoticons you use most.
-* **Quick Cache**: Frequent searches appear instantly, even without an internet connection.
-
-### 📋 Clipboard Protection
-The tool uses a "Ghost Paste" method. It saves your current clipboard content, pastes the emoticon, and **restores your original text** 0.5 seconds later. You won't lose whatever you were previously copying/pasting.
 
 ---
 
