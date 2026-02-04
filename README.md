@@ -28,7 +28,7 @@ A lightweight, background utility for Windows that lets you search, scrape, and 
 
 ---
 
-## 📥 Requirements & Setup
+## Requirements & Setup
 
 To run this script from source, ensure you have Python installed and run the following:
 
