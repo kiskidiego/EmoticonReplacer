@@ -34,3 +34,5 @@ To run this script from source, ensure you have Python installed and run the fol
 
 ```bash
 pip install keyboard pyperclip requests beautifulsoup4 pystray Pillow
+
+Once the requirements are met, run makefile.cmd to build the executable.
