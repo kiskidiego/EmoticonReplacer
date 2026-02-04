@@ -1,4 +1,4 @@
-# ✨ Emoticon Replacer Pro
+# ✨ Emoticon Replacer
 
 A lightweight, background utility for Windows that lets you search, scrape, and insert Japanese kaomojis and emoticons into any text field using simple keyboard triggers.
 
