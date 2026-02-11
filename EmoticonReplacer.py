@@ -17,9 +17,11 @@ import json
 HOST = "127.0.0.1"
 PORT = 54321
 MAGIC = b"EMOTICON_REPLACER_V1"
+MAX_RESULTS = 100
 
 import ctypes
 import sys
+
 
 def ensure_single_instance():
     mutex_name = "Global\\EmoticonReplacer_Mutex"
@@ -36,57 +38,14 @@ def ensure_single_instance():
 
 ensure_single_instance()
 
-def show_preview():
-    global popup, typed_buffer, preview_results
-    if not typed_buffer:
-        if popup: popup.withdraw()
-        return
+root = tk.Tk()
+root.withdraw()  # Hide the main root window
+search_window_ref = None
+add_window_ref = None
 
-    # Fuzzy match: find keys in local_db that contain the typed_buffer
-    preview_results = get_closest_keywords(typed_buffer, limit=5)
-    
-    if not preview_results:
-        if popup: popup.withdraw()
-        return
 
-    # Create/Update popup specifically for previewing keywords
-    if not popup:
-        popup = tk.Tk()
-        popup.overrideredirect(True)
-        popup.attributes("-topmost", True)
-
-    for widget in popup.winfo_children():
-        widget.destroy()
-
-    # Listbox showing potential keyword matches
-    lb = tk.Listbox(popup, font=("Segoe UI Symbol", 12), 
-                    width=30, height=len(preview_results))
-    lb.pack()
-    
-    for res in preview_results:
-        lb.insert(tk.END, f"  {res}...")
-
-    instructions = tk.Label(popup, text=f". to autocomplete", font=("Arial", 8), fg="gray")
-    instructions.pack()
-
-    width = popup.winfo_reqwidth()
-    height = popup.winfo_reqheight()
-    
-    # Get screen dimensions
-    screen_width = popup.winfo_screenwidth()
-    screen_height = popup.winfo_screenheight()
-    
-    # Calculate coordinates for the center
-    x = (screen_width // 2) - (width // 2)
-    y = (screen_height // 2) - (height // 2)
-    
-    popup.geometry(f'{width}x{height}+{x}+{y}')
-    popup.update_idletasks()
-    popup.deiconify()
-    popup.update()
-
-def get_closest_keywords(query, limit=10):
-    keys = list(local_db.keys())
+def get_closest_keywords(query, limit=MAX_RESULTS):
+    keys = list(local_db.get("keywords", []))
     if not query:
         return keys[:limit]
 
@@ -99,21 +58,28 @@ def get_closest_keywords(query, limit=10):
 
 def open_add_emoticon_window():
     # Create a small popup window
-    add_win = tk.Tk()
-    add_win.title("Add Custom Emoticon")
-    add_win.attributes("-topmost", True)
-    #add_win.geometry("300x200+700+400")
-    add_win.configure(bg="#2b2b2b")
+    global add_window_ref
+
+    if add_window_ref and add_window_ref.winfo_exists():
+        add_window_ref.lift()
+        add_window_ref.focus_force()
+        return
+
+    add_window_ref = tk.Toplevel(root)
+    add_window_ref.title("Add Custom Emoticon")
+    add_window_ref.attributes("-topmost", True)
+    #add_window_ref.geometry("300x200+700+400")
+    add_window_ref.configure(bg="#2b2b2b")
 
     # Styling for labels and entries
     style = {"bg": "#2b2b2b", "fg": "white", "font": ("Arial", 10)}
     
-    tk.Label(add_win, text="Keyword:", **style).pack(pady=5)
-    key_entry = tk.Entry(add_win)
+    tk.Label(add_window_ref, text="Keyword:", **style).pack(pady=5)
+    key_entry = tk.Entry(add_window_ref)
     key_entry.pack(pady=5)
     
-    tk.Label(add_win, text="Emoticon:", **style).pack(pady=5)
-    emo_entry = tk.Entry(add_win)
+    tk.Label(add_window_ref, text="Emoticon:", **style).pack(pady=5)
+    emo_entry = tk.Entry(add_window_ref)
     emo_entry.pack(pady=5)
 
     def save_new_entry():
@@ -121,35 +87,37 @@ def open_add_emoticon_window():
         emoticon = emo_entry.get().strip()
         
         if keyword and emoticon:
-            if keyword not in local_db:
-                local_db[keyword] = []
+            if keyword not in local_db["emoticons"]:
+                local_db["emoticons"][keyword] = []
             
             # Add to the top of the list
-            if emoticon in local_db[keyword]:
-                local_db[keyword].remove(emoticon)
-            local_db[keyword].insert(0, emoticon)
+            if emoticon in local_db["emoticons"][keyword]:
+                local_db["emoticons"][keyword].remove(emoticon)
+            local_db["emoticons"][keyword].insert(0, emoticon)
+
+            if keyword in local_db["keywords"]:
+                local_db["keywords"].remove(keyword)
+            local_db["keywords"].insert(0, keyword)
             
             save_db()
             
             print(f"Added {emoticon} to '{keyword}'")
-            add_win.destroy()
+            add_window_ref.destroy()
 
-    tk.Button(add_win, text="Save", command=save_new_entry, bg="#444444", fg="white").pack(pady=10)
+    tk.Button(add_window_ref, text="Save", command=save_new_entry, bg="#444444", fg="white").pack(pady=10)
 
-    width = add_win.winfo_reqwidth()
-    height = add_win.winfo_reqheight()
+    width = add_window_ref.winfo_reqwidth()
+    height = add_window_ref.winfo_reqheight()
     
     # Get screen dimensions
-    screen_width = add_win.winfo_screenwidth()
-    screen_height = add_win.winfo_screenheight()
+    screen_width = add_window_ref.winfo_screenwidth()
+    screen_height = add_window_ref.winfo_screenheight()
     
     # Calculate coordinates for the center
     x = (screen_width // 2) - (width // 2)
     y = (screen_height // 2) - (height // 2)
     
-    add_win.geometry(f'{width}x{height}+{x}+{y}')
-
-    add_win.mainloop()
+    add_window_ref.geometry(f'{width}x{height}+{x}+{y}')
 
 def save_db():
     with open(db_path, 'w', encoding='utf-8') as f:
@@ -160,10 +128,7 @@ def save_db():
 def quit_window(icon, item):
     icon.stop()
     # Check if popup exists before trying to close it
-    if popup is not None:
-        popup.quit()
     os._exit(0)
-
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -184,17 +149,24 @@ db_path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "emoticon_
 
 if not os.path.exists(db_path):
     with open(db_path, 'w', encoding='utf-8') as f:
-        f.write('{}')
+        f.write('{"emoticons": {},' \
+        '"keywords": []}')
 
-local_db = {}
+local_db = {
+    "emoticons": {},
+    "keywords": []
+}
 with open(db_path, 'r', encoding='utf-8') as f:
     try:
         local_db = json.load(f)
     except:
-        local_db = {}
+        local_db = {"emoticons": {}, "keywords": []}
 
 menu = (
-    pystray.MenuItem('Add Emoticon', lambda: threading.Thread(target=open_add_emoticon_window).start()),
+    pystray.MenuItem('Add Emoticon',
+        lambda: root.after(0, open_add_emoticon_window)),
+    pystray.MenuItem('Search Emoticon',
+        lambda: root.after(0, open_search_for_emoticon_window)),
     pystray.MenuItem('Quit', quit_window),
 )
 icon = pystray.Icon("EmoticonReplacer", image, "EmoticonReplacer", menu)
@@ -202,9 +174,26 @@ icon = pystray.Icon("EmoticonReplacer", image, "EmoticonReplacer", menu)
 # Run this in a separate thread so it doesn't block your macro
 threading.Thread(target=icon.run, daemon=True).start()
 
-TRIGGER = ';'
-MAX_RESULTS = 100
-RESULTS_PER_PAGE = 10
+def remove_emoticon_from_db(keyword, emoticon):
+    if keyword in local_db["emoticons"] and emoticon in local_db["emoticons"][keyword]:
+        local_db["emoticons"][keyword].remove(emoticon)
+        if not local_db["emoticons"][keyword]:  # If the list is empty, remove the keyword
+            remove_keyword_from_db(keyword)
+            return
+        save_db()
+        print(f"Removed {emoticon} from '{keyword}'")
+    else:
+        print(f"Emoticon '{emoticon}' not found under keyword '{keyword}'")
+
+def remove_keyword_from_db(keyword):
+    if keyword in local_db["emoticons"]:
+        del local_db["emoticons"][keyword]
+    if keyword in local_db["keywords"]:
+        local_db["keywords"].remove(keyword)
+        save_db()
+        print(f"Removed keyword '{keyword}' and all its emoticons")
+    else:
+        print(f"Keyword '{keyword}' not found in database")
 
 def fetch_emojis_from_web(query):
     global local_db
@@ -215,7 +204,7 @@ def fetch_emojis_from_web(query):
     
     # URL encode the query for the search URL
     encoded_query = urllib.parse.quote(query)
-    url = f"https://emojicombos.com/{encoded_query}"
+    url = f"https://emojidb.org/{encoded_query}"
     
     try:
         response = requests.get(url, timeout=2)
@@ -223,7 +212,7 @@ def fetch_emojis_from_web(query):
             return {}
         
         soup = BeautifulSoup(response.text, 'html.parser')
-        emoji_divs = soup.find_all('div', class_='emojis')
+        emoji_divs = soup.find_all('div', class_='emoji')
         
         results = []
         # Limit results to MAX_RESULTS
@@ -244,247 +233,8 @@ def fetch_emojis_from_web(query):
         print(f"Error fetching from EmojiDB: {e}")
         return []
 
-typed_buffer = ""
-typing = False
-selecting = False
-popup = None
-results = []
-preview_results = []
-selected_index = 0
-current_page = 0
-
-def close_popup():
-    global popup, typing, typed_buffer, results, selecting
-    if popup:
-        popup.destroy()
-        popup = None
-    typing = False
-    selecting = False
-    typed_buffer = ""
-    results = []
-
-def insert_emote(emoji_char, emoji_query):
-    emoji_char = emoji_char.replace('｀', '`')
-    emoji_char = emoji_char.replace('（', '(')
-    emoji_char = emoji_char.replace('）', ')')
-    emoji_char = emoji_char.replace('˂', '<')
-    emoji_char = emoji_char.replace('˃', '>')
-    emoji_char = emoji_char.replace('＾', '^')
-    print(f"Inserting emoticon '{emoji_char}' for query '{emoji_query}'")
-    old_clipboard = pyperclip.paste()
-    
-    # Backspace the trigger + buffer
-    backspaces = len(typed_buffer) + 2
-    for _ in range(backspaces):
-        keyboard.send("backspace")
-    
-    pyperclip.copy(emoji_char)
-    while(not pyperclip.paste() == emoji_char):
-        time.sleep(0.05)
-
-    keyboard.press_and_release('ctrl+v')
-
-    threading.Timer(0.5, lambda: pyperclip.copy(old_clipboard)).start()
-    close_popup()
-
-    if emoji_query not in local_db:
-        local_db[emoji_query] = []
-    
-    if emoji_char in local_db[emoji_query]:
-        local_db[emoji_query].remove(emoji_char)
-
-    local_db[emoji_query].insert(0, emoji_char)
-    save_db()
-
-    
-
-def show_popup(page):
-    global popup, results
-    if not results:
-        if popup: popup.withdraw()
-        return
-    if not popup:
-        popup = tk.Tk()
-        popup.overrideredirect(True)
-        popup.attributes("-topmost", True)
-        #popup.geometry("+600+400")
-
-    for widget in popup.winfo_children():
-        widget.destroy()
-
-    page_results = results[page*RESULTS_PER_PAGE:(page+1)*RESULTS_PER_PAGE]
-
-    if not page_results:
-        if popup: popup.withdraw()
-        return
-
-    longest_emote = max(len(e) for e in page_results) if page_results else 15
-    dynamic_width = min(max(longest_emote + 2, 20), 40)
-
-    listbox = tk.Listbox(popup, font=("Segoe UI Symbol", 12), 
-                        width=dynamic_width, height=len(page_results))
-    
-    listbox.pack()
-
-    for emoji in page_results:
-        listbox.insert(tk.END, f"  {emoji}")
-    
-    listbox.selection_set(selected_index)
-
-    instructions = tk.Label(popup, text=f". / , to scroll  + / - to switch pages", font=("Arial", 8), fg="gray")
-    instructions.pack()
-
-    total_pages = (len(results) + RESULTS_PER_PAGE - 1) // RESULTS_PER_PAGE
-    page_info = tk.Label(popup, text=f"Page {page + 1} of {total_pages}", font=("Arial", 8), fg="gray")
-    page_info.pack()
-
-    popup.update_idletasks() # Calculate window size based on content
-    
-    width = popup.winfo_reqwidth()
-    height = popup.winfo_reqheight()
-    
-    # Get screen dimensions
-    screen_width = popup.winfo_screenwidth()
-    screen_height = popup.winfo_screenheight()
-    
-    # Calculate coordinates for the center
-    x = (screen_width // 2) - (width // 2)
-    y = (screen_height // 2) - (height // 2)
-    
-    popup.geometry(f'{width}x{height}+{x}+{y}')
-
-    popup.deiconify()
-    popup.update()
-
-def on_key(event):
-    global typed_buffer, typing, selected_index, results, popup, selecting, current_page
-
-    if event.event_type != "down":
-        return
-    
-    if event.name == TRIGGER and not typing and not selecting:
-        print("Trigger detected, starting to type...")
-        typing = True
-        typed_buffer = ""
-        selected_index = 0
-        results = []
-        show_preview()
-        return
-
-    elif typing:
-        if event.name == TRIGGER:
-            print("Trigger pressed again, searching...")
-            typing = False
-            
-            if(typed_buffer):
-                results = get_results(typed_buffer)    
-                selected_index = 0
-                current_page = 0
-
-                if not results:
-                    print("No results found.")
-                    close_popup()
-                    return
-
-                show_popup(current_page)
-                selecting = True
-            return
-        
-        elif event.name == ".":
-            print("Autocomplete triggered.")
-            if preview_results:
-                for _ in range(len(typed_buffer) + 1):
-                    keyboard.send("backspace")
-                typed_buffer = preview_results[0]
-                keyboard.write(typed_buffer)
-                show_preview()
-        
-        elif event.name == "esc":
-            close_popup()
-            return
-        
-        elif event.name == "backspace":
-            if not typed_buffer:
-                typing = False
-                if popup: popup.withdraw()
-                return
-            typed_buffer = typed_buffer[:-1]
-            show_preview()
-
-        elif len(event.name) == 1:
-            typed_buffer += event.name
-            show_preview()
-
-        elif event.name == "space":
-            typed_buffer += "-"
-
-        elif event.name in ["enter", "tab"]:
-            close_popup()
-            return
-    
-    elif selecting:
-        if event.name == "backspace":
-            selected_index = 0
-            results = []
-            if popup: popup.withdraw()
-            typing = True
-            selecting = False
-            return
-
-        elif event.name == "space":
-            keyboard.press_and_release('backspace')
-            if results:
-                insert_emote(results[current_page * RESULTS_PER_PAGE + selected_index], typed_buffer)
-                selecting = False
-            return
-    
-        elif event.name == ".":
-            keyboard.press_and_release('backspace')
-            selected_index += 1
-            if selected_index >= min(RESULTS_PER_PAGE, len(results) - current_page * RESULTS_PER_PAGE):
-                selected_index = 0
-                current_page += 1
-                if current_page * RESULTS_PER_PAGE >= len(results):
-                    current_page = 0
-            show_popup(current_page)
-            return
-        
-        elif event.name == ",":
-            keyboard.press_and_release('backspace')
-            selected_index -= 1
-            if selected_index < 0:
-                current_page -= 1
-                if current_page < 0:
-                    current_page = (len(results) - 1) // RESULTS_PER_PAGE
-                selected_index = min(RESULTS_PER_PAGE - 1, len(results) - current_page * RESULTS_PER_PAGE - 1)
-            show_popup(current_page)
-            return
-
-        elif event.name =="esc":
-            close_popup()
-            return
-        
-        elif event.name == "+" or event.name == "=":
-            keyboard.press_and_release('backspace')
-            if (current_page + 1) * RESULTS_PER_PAGE < len(results):
-                current_page += 1
-                selected_index = 0
-                show_popup(current_page)
-            return
-        
-        elif event.name == "-":
-            keyboard.press_and_release('backspace')
-            if current_page > 0:
-                current_page -= 1
-                selected_index = 0
-                show_popup(current_page)
-            return
-
-        else:
-            close_popup()
-
 def get_results(query):
-    local_results = local_db.get(query, [])[:]
+    local_results = local_db.get("emoticons", {}).get(query, [])[:]
     if len(local_results) < MAX_RESULTS:
         web_results = fetch_emojis_from_web(query)
         for emoji in web_results:
@@ -493,9 +243,209 @@ def get_results(query):
             if len(local_results) >= MAX_RESULTS:
                 break
     return local_results
-            
 
-keyboard.hook(on_key)
-keyboard.add_hotkey('ctrl+alt+a', lambda: threading.Thread(target=open_add_emoticon_window).start())
-print(f"Live EmoticonReplacer macro running. Type {TRIGGER} + query...")
-keyboard.wait()
+
+def open_search_for_emoticon_window():
+    global search_window_ref
+
+    if search_window_ref and search_window_ref.winfo_exists():
+        search_window_ref.lift()
+        search_window_ref.focus_force()
+        return
+
+    showing_emoticons = False
+    scrolling = False
+    # Check if a search window already exists and focus it instead
+    for widget in root.winfo_children():
+        if isinstance(widget, tk.Toplevel) and widget.title() == "Search Emoticon":
+            widget.lift()
+            widget.focus_force()
+            return
+    
+    search_window_ref = tk.Toplevel(root)
+    search_window_ref.title("Search Emoticon")
+    search_window_ref.attributes("-topmost", True)
+    search_window_ref.configure(bg="#2b2b2b")
+    
+    # Mark this window as a search window
+    search_window_ref._is_search_window = True
+
+    # Styling
+    style = {"bg": "#2b2b2b", "fg": "white", "font": ("Arial", 10)}
+    
+    tk.Label(search_window_ref, text="Enter keyword to search:", **style).pack(pady=5)
+    key_entry = tk.Entry(search_window_ref)
+    key_entry.focus()
+    
+    def show_suggestions(event=None):
+        nonlocal scrolling, showing_emoticons
+        scrolling = False
+        showing_emoticons = False
+        keyword = key_entry.get().strip().lower()
+        suggestions = get_closest_keywords(keyword, MAX_RESULTS)
+        
+        results_listbox.delete(0, tk.END)
+        if suggestions:
+            for sug in suggestions:
+                results_listbox.insert(tk.END, sug)
+
+    def perform_search(event=None):
+        nonlocal scrolling, showing_emoticons
+        scrolling = False
+        showing_emoticons = True
+        keyword = key_entry.get().strip().lower()
+        if keyword:
+            results = get_results(keyword)
+            
+            results_listbox.delete(0, tk.END)
+            if results:
+                for res in results:
+                    results_listbox.insert(tk.END, res)
+            else:
+                results_listbox.insert(tk.END, "No results found")
+        move_focus_to_results(None)
+
+    def move_focus_to_results(event):
+        nonlocal scrolling
+        if results_listbox.size() > 0 and not scrolling:
+            scrolling = True
+            results_listbox.focus_set()
+            results_listbox.selection_clear(0, tk.END)
+            results_listbox.selection_set(0)
+            results_listbox.activate(0)
+    
+    def move_focus_to_search(event):
+        nonlocal scrolling
+        if scrolling and results_listbox.curselection() == (0,):
+            scrolling = False
+            key_entry.focus_force()
+
+    # Bind events after everything is defined
+    key_entry.bind("<Down>", move_focus_to_results)
+    key_entry.bind("<KeyRelease>", show_suggestions)
+    key_entry.bind("<Return>", perform_search)
+    key_entry.pack(pady=5)
+
+    # Create results listbox
+    results_listbox = tk.Listbox(search_window_ref, font=("Segoe UI Symbol", 12), width=30, height=20)
+    results_listbox.pack(pady=5)
+
+    def save_emoticon(emoticon, keyword):
+        if keyword not in local_db["emoticons"]:
+            local_db["emoticons"][keyword] = []
+        
+        # Add to the top of the list
+        if emoticon in local_db["emoticons"][keyword]:
+            local_db["emoticons"][keyword].remove(emoticon)
+        local_db["emoticons"][keyword].insert(0, emoticon)
+
+        if keyword in local_db["keywords"]:
+            local_db["keywords"].remove(keyword)
+        local_db["keywords"].insert(0, keyword)
+        
+        save_db()
+        print(f"Saved {emoticon} to '{keyword}'")
+
+    # Add double-click to copy functionality
+    def select(event):
+        selection = results_listbox.curselection()
+        if selection:
+            if(showing_emoticons):
+                emoticon = results_listbox.get(selection[0])
+                if emoticon:
+                    if emoticon == "No results found":
+                        move_focus_to_search(None)
+                    else:
+                        pyperclip.copy(emoticon)
+                        print(f"Copied '{emoticon}' to clipboard")
+                        save_emoticon(emoticon, key_entry.get().strip().lower())
+                        search_window_ref.destroy()
+                        root.after(100, lambda: keyboard.send('ctrl+v'))
+            else:
+                # If we're showing keywords, perform a search for that keyword
+                key_entry.delete(0, tk.END)
+                key_entry.insert(0, results_listbox.get(selection[0]))
+                perform_search()
+    
+    def remove_selected_emoticon(event):
+        if showing_emoticons:
+            selection = results_listbox.curselection()
+            if selection:
+                emoticon = results_listbox.get(selection[0])
+                keyword = key_entry.get().strip().lower()
+                remove_emoticon_from_db(keyword, emoticon)
+                perform_search()
+        else:
+            selection = results_listbox.curselection()
+            if selection:
+                keyword = results_listbox.get(selection[0])
+                remove_keyword_from_db(keyword)
+                show_suggestions()
+
+    results_listbox.bind("<Up>", move_focus_to_search)
+    results_listbox.bind("<Double-Button-1>", select)
+    results_listbox.bind("<Return>", select)
+    results_listbox.bind("<Delete>", remove_selected_emoticon)
+    results_listbox.bind("<BackSpace>", remove_selected_emoticon)
+
+    tk.Button(search_window_ref, text="Search", command=perform_search, bg="#444444", fg="white").pack(pady=5)
+    
+    # Add status label
+    status_label = tk.Label(search_window_ref, text="", **style)
+    status_label.pack(pady=2)
+
+    # Center the window
+    search_window_ref.update_idletasks()
+    
+    width = max(search_window_ref.winfo_reqwidth(), 200)
+    height = max(search_window_ref.winfo_reqheight(), 350)
+    
+    screen_width = search_window_ref.winfo_screenwidth()
+    screen_height = search_window_ref.winfo_screenheight()
+    
+    x = (screen_width // 2) - (width // 2)
+    y = (screen_height // 2) - (height // 2)
+    
+    search_window_ref.geometry(f'{width}x{height}+{x}+{y}')
+    
+    # Show initial suggestions
+    show_suggestions(None)
+    
+    search_window_ref.deiconify() # Ensure it's not minimized
+    search_window_ref.lift()
+    key_entry.focus_force()
+
+def listen_for_hotkeys():
+    """
+    Separate thread to handle hotkey monitoring without 
+    interfering with the Tkinter mainloop.
+    """
+    # Use individual hotkeys with a small sleep to prevent double-triggers
+    while True:
+        if keyboard.is_pressed('ctrl+alt+a'):
+            print("Hotkey: Add triggered")
+            root.after(0, open_add_emoticon_window)
+            time.sleep(0.5) # Prevent multiple triggers
+        
+        if keyboard.is_pressed('ctrl+alt+s'):
+            print("Hotkey: Search triggered")
+            root.after(0, open_search_for_emoticon_window)
+            time.sleep(0.5)
+            
+        time.sleep(0.05) # Tiny sleep to save CPU cycles
+
+# Start the hotkey listener in a daemon thread
+hotkey_thread = threading.Thread(target=listen_for_hotkeys, daemon=True)
+hotkey_thread.start()
+
+print("EmoticonReplacer is running.")
+print("Hotkeys: Ctrl+Alt+A (Add), Ctrl+Alt+S (Search)")
+
+# Standard Tkinter mainloop
+try:
+    root.mainloop()
+except KeyboardInterrupt:
+    pass
+finally:
+    print("Exiting EmoticonReplacer.")
+    os._exit(0)
