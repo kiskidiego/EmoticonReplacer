@@ -120,9 +120,25 @@ def open_add_emoticon_window():
     add_window_ref.geometry(f'{width}x{height}+{x}+{y}')
 
 def save_db():
-    with open(db_path, 'w', encoding='utf-8') as f:
+    for keyword in local_db["emoticons"]:
+        # We use a list comprehension to create a NEW list of cleaned strings
+        cleaned_list = []
+        for emoticon in local_db["emoticons"][keyword]:
+            # Chain the replaces or use a loop
+            e = (emoticon.replace('｀', '`')
+                         .replace('（', '(')
+                         .replace('）', ')')
+                         .replace('˂', '<')
+                         .replace('˃', '>')
+                         .replace('＾', '^'))
+            cleaned_list.append(e)
         
+        # Now remove duplicates from the cleaned strings
+        local_db["emoticons"][keyword] = list(dict.fromkeys(cleaned_list))
+
+    with open(db_path, 'w', encoding='utf-8') as f:
         json.dump(local_db, f, ensure_ascii=False, indent=4)
+        
     print("Database saved.")
 
 def quit_window(icon, item):
