@@ -203,6 +203,7 @@ def fetch_emojis_from_web(query):
         return {}
     
     # URL encode the query for the search URL
+    query = query.replace(' ', '-')
     encoded_query = urllib.parse.quote(query)
     url = f"https://emojidb.org/{encoded_query}"
     
