@@ -264,7 +264,9 @@ def close_popup():
     results = []
 
 def insert_emote(emoji_char, emoji_query):
-    emoji_char = emoji_char.replace('꒳', '⩊')
+    emoji_char = emoji_char.replace('｀', '`')
+    emoji_char = emoji_char.replace('（', '(')
+    emoji_char = emoji_char.replace('）', ')')
     emoji_char = emoji_char.replace('˂', '<')
     emoji_char = emoji_char.replace('˃', '>')
     emoji_char = emoji_char.replace('＾', '^')
