@@ -293,6 +293,12 @@ def open_search_for_emoticon_window():
     tk.Label(search_window_ref, text="Enter keyword to search:", **style).pack(pady=5)
     key_entry = tk.Entry(search_window_ref)
     key_entry.focus()
+
+    def close_search_window():
+        nonlocal scrolling, showing_emoticons
+        scrolling = False
+        showing_emoticons = False
+        search_window_ref.destroy()
     
     def show_suggestions(event=None):
         nonlocal scrolling, showing_emoticons
@@ -341,6 +347,7 @@ def open_search_for_emoticon_window():
     key_entry.bind("<Down>", move_focus_to_results)
     key_entry.bind("<KeyRelease>", show_suggestions)
     key_entry.bind("<Return>", perform_search)
+    key_entry.bind("<Escape>", lambda e: close_search_window())
     key_entry.pack(pady=5)
 
     # Create results listbox
@@ -404,6 +411,7 @@ def open_search_for_emoticon_window():
     results_listbox.bind("<Return>", select)
     results_listbox.bind("<Delete>", remove_selected_emoticon)
     results_listbox.bind("<BackSpace>", remove_selected_emoticon)
+    results_listbox.bind("<Escape>", lambda e: close_search_window())
 
     tk.Button(search_window_ref, text="Search", command=perform_search, bg="#444444", fg="white").pack(pady=5)
     
