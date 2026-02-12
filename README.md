@@ -7,24 +7,13 @@ A lightweight, background utility for Windows that lets you search, scrape, and 
 ## Quick Start
 
 1.  **Launch the App**: Run the script. A small icon will appear in your **System Tray** (bottom right near the clock).
-2.  **The Trigger**: Press the semicolon key (**`;`**) once to start a search.
-3.  **Type your Query**: Type a keyword (e.g., `cat`, `hug`, `shrug`, or `angry`).
-4.  **Search**: Press semicolon (**`;`**) again to fetch results.
-5.  **Select & Insert**: Use the navigation keys to find your favorite and press **Space** to paste it!
+2.  **The Trigger**: Press the crtl+alt+s to open the emoticon search window. type in your query, something like "happy" or "sad".
+3.  **Search**: Press the search button or the enter key to search for matching emoticons. the ones you use will be saved to a local database for your convenience, and will be ordered by most recent use.
+4.  **Use the emoticon**: Scroll through the results with the arrow keys or your mouse. Press the enter key or double click a result to copy it to your clickboard and instert it into whatever you were typing before, if anything.
 
----
+**Add your own emoticons**: Press ctrl+alt+a to open a window to add a custom emoticon. Introduce a keyword to identify it and the emoticon, then press the save button.
 
-## Keyboard Controls
-
-| Action | Key |
-| :--- | :--- |
-| **Start / Finish Search** | `;` (Semicolon) |
-| **Scroll Results** | `.` (Next) and `,` (Previous) |
-| **Change Pages** | `+` (Forward) and `-` (Back) |
-| **Autocomplete Keyword** | `.` (While typing the search term) |
-| **Confirm / Paste** | `Space` |
-| **Cancel / Close** | `Esc` |
-| **Add Custom Emote** | `Ctrl + Alt + A` |
+You can close the app or open either window by right-clicking the app's tray icon.
 
 ---
 
