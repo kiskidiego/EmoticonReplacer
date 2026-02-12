@@ -62,7 +62,8 @@ def open_add_emoticon_window():
 
     if add_window_ref and add_window_ref.winfo_exists():
         add_window_ref.lift()
-        add_window_ref.focus_force()
+        #add_window_ref.focus_force()
+        key_entry.focus_force()
         return
 
     add_window_ref = tk.Toplevel(root)
@@ -118,6 +119,10 @@ def open_add_emoticon_window():
     y = (screen_height // 2) - (height // 2)
     
     add_window_ref.geometry(f'{width}x{height}+{x}+{y}')
+
+    add_window_ref.deiconify() # Ensure it's not minimized
+    add_window_ref.lift()
+    key_entry.focus_force()
 
 def save_db():
     for keyword in local_db["emoticons"]:
@@ -261,23 +266,26 @@ def get_results(query):
                 break
     return local_results
 
-
 def open_search_for_emoticon_window():
     global search_window_ref
 
-    if search_window_ref and search_window_ref.winfo_exists():
+    def focus_entry():
+        search_window_ref.deiconify() # Ensure it's not minimized
         search_window_ref.lift()
-        search_window_ref.focus_force()
+        search_window_ref.attributes("-topmost", True)
+        search_window_ref.attributes("-topmost", False) # Toggle it
+        search_window_ref.attributes("-topmost", True) # Set it back
+        for widget in search_window_ref.winfo_children():
+            if isinstance(widget, tk.Entry):
+                widget.focus_force()
+                break
+            
+    if search_window_ref and search_window_ref.winfo_exists():
+        focus_entry()
         return
 
     showing_emoticons = False
     scrolling = False
-    # Check if a search window already exists and focus it instead
-    for widget in root.winfo_children():
-        if isinstance(widget, tk.Toplevel) and widget.title() == "Search Emoticon":
-            widget.lift()
-            widget.focus_force()
-            return
     
     search_window_ref = tk.Toplevel(root)
     search_window_ref.title("Search Emoticon")
@@ -438,9 +446,8 @@ def open_search_for_emoticon_window():
     # Show initial suggestions
     show_suggestions(None)
     
-    search_window_ref.deiconify() # Ensure it's not minimized
-    search_window_ref.lift()
-    key_entry.focus_force()
+    focus_entry()
+    print("Search window opened.")
 
 def listen_for_hotkeys():
     """
@@ -464,6 +471,9 @@ def listen_for_hotkeys():
 # Start the hotkey listener in a daemon thread
 hotkey_thread = threading.Thread(target=listen_for_hotkeys, daemon=True)
 hotkey_thread.start()
+
+open_search_for_emoticon_window() # For some reason the first time it opens, it doesn't focus properly. This is a workaround to open it once at the start.
+search_window_ref.destroy()
 
 print("EmoticonReplacer is running.")
 print("Hotkeys: Ctrl+Alt+A (Add), Ctrl+Alt+S (Search)")
