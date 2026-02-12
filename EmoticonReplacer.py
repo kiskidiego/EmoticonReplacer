@@ -404,6 +404,8 @@ def open_search_for_emoticon_window():
             if selection:
                 keyword = results_listbox.get(selection[0])
                 remove_keyword_from_db(keyword)
+                scrolling = False
+                key_entry.focus_force()
                 show_suggestions()
 
     results_listbox.bind("<Up>", move_focus_to_search)
