@@ -285,7 +285,6 @@ def open_search_for_emoticon_window():
         return
 
     showing_emoticons = False
-    scrolling = False
     
     search_window_ref = tk.Toplevel(root)
     search_window_ref.title("Search Emoticon")
@@ -303,14 +302,12 @@ def open_search_for_emoticon_window():
     key_entry.focus()
 
     def close_search_window():
-        nonlocal scrolling, showing_emoticons
-        scrolling = False
+        nonlocal showing_emoticons
         showing_emoticons = False
         search_window_ref.destroy()
     
     def show_suggestions(event=None):
-        nonlocal scrolling, showing_emoticons
-        scrolling = False
+        nonlocal showing_emoticons
         showing_emoticons = False
         keyword = key_entry.get().strip().lower()
         suggestions = get_closest_keywords(keyword, MAX_RESULTS)
@@ -321,8 +318,7 @@ def open_search_for_emoticon_window():
                 results_listbox.insert(tk.END, sug)
 
     def perform_search(event=None):
-        nonlocal scrolling, showing_emoticons
-        scrolling = False
+        nonlocal showing_emoticons
         showing_emoticons = True
         keyword = key_entry.get().strip().lower()
         if keyword:
@@ -337,19 +333,18 @@ def open_search_for_emoticon_window():
         move_focus_to_results(None)
 
     def move_focus_to_results(event):
-        nonlocal scrolling
-        if results_listbox.size() > 0 and not scrolling:
-            scrolling = True
+        if results_listbox.size() > 0:
             results_listbox.focus_set()
             results_listbox.selection_clear(0, tk.END)
             results_listbox.selection_set(0)
             results_listbox.activate(0)
     
-    def move_focus_to_search(event):
-        nonlocal scrolling
-        if scrolling and results_listbox.curselection() == (0,):
-            scrolling = False
+    def move_focus_to_search_if_at_top(event):
+        if results_listbox.curselection() == (0,):
             key_entry.focus_force()
+    
+    def move_focus_to_search(event):
+        key_entry.focus_force()
 
     # Bind events after everything is defined
     key_entry.bind("<Down>", move_focus_to_results)
@@ -386,7 +381,7 @@ def open_search_for_emoticon_window():
                 emoticon = results_listbox.get(selection[0])
                 if emoticon:
                     if emoticon == "No results found":
-                        move_focus_to_search(None)
+                        move_focus_to_search_if_at_top(None)
                     else:
                         pyperclip.copy(emoticon)
                         print(f"Copied '{emoticon}' to clipboard")
@@ -412,15 +407,14 @@ def open_search_for_emoticon_window():
             if selection:
                 keyword = results_listbox.get(selection[0])
                 remove_keyword_from_db(keyword)
-                scrolling = False
                 key_entry.focus_force()
                 show_suggestions()
 
-    results_listbox.bind("<Up>", move_focus_to_search)
+    results_listbox.bind("<Up>", move_focus_to_search_if_at_top)
     results_listbox.bind("<Double-Button-1>", select)
     results_listbox.bind("<Return>", select)
     results_listbox.bind("<Delete>", remove_selected_emoticon)
-    results_listbox.bind("<BackSpace>", remove_selected_emoticon)
+    results_listbox.bind("<BackSpace>", move_focus_to_search)
     results_listbox.bind("<Escape>", lambda e: close_search_window())
 
     tk.Button(search_window_ref, text="Search", command=perform_search, bg="#444444", fg="white").pack(pady=5)
@@ -473,6 +467,7 @@ hotkey_thread = threading.Thread(target=listen_for_hotkeys, daemon=True)
 hotkey_thread.start()
 
 open_search_for_emoticon_window() # For some reason the first time it opens, it doesn't focus properly. This is a workaround to open it once at the start.
+#time.sleep(.5) 
 search_window_ref.destroy()
 
 print("EmoticonReplacer is running.")
