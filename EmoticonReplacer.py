@@ -18,6 +18,7 @@ HOST = "127.0.0.1"
 PORT = 54321
 MAGIC = b"EMOTICON_REPLACER_V1"
 MAX_RESULTS = 100
+RESULT_BOX_HEIGHT = 20
 
 import ctypes
 import sys
@@ -267,7 +268,7 @@ def get_results(query):
     return local_results
 
 def open_search_for_emoticon_window():
-    global search_window_ref
+    global search_window_ref, RESULT_BOX_HEIGHT
 
     def focus_entry():
         search_window_ref.deiconify() # Ensure it's not minimized
@@ -339,10 +340,42 @@ def open_search_for_emoticon_window():
             results_listbox.selection_set(0)
             results_listbox.activate(0)
     
-    def move_focus_to_search_if_at_top(event):
+    def cycle_to_bottom_if_at_top(event):
         if results_listbox.curselection() == (0,):
-            key_entry.focus_force()
+            results_listbox.selection_clear(0, tk.END)
+            results_listbox.selection_set(results_listbox.size() - 1)
+            results_listbox.activate(results_listbox.size() - 1)
+            results_listbox.see(results_listbox.size() - 1)
+            return "break"  # Prevent default behavior
     
+    def cycle_to_top_if_at_bottom(event):
+        if results_listbox.curselection() == (results_listbox.size() - 1,):
+            results_listbox.selection_clear(0, tk.END)
+            results_listbox.selection_set(0)
+            results_listbox.activate(0)
+            results_listbox.see(0)
+            return "break"  # Prevent default behavior
+
+    def page_up(event):
+        current = results_listbox.curselection()
+        currentpage = current[0] // RESULT_BOX_HEIGHT if current else 0
+        new_index = max(0, (currentpage - 1) * RESULT_BOX_HEIGHT)
+        results_listbox.selection_clear(0, tk.END)
+        results_listbox.selection_set(new_index)
+        results_listbox.activate(new_index)
+        results_listbox.yview_scroll(-RESULT_BOX_HEIGHT, "units")  # page up
+        return "break"  # Prevent default behavior
+    
+    def page_down(event):
+        current = results_listbox.curselection()
+        currentpage = current[0] // RESULT_BOX_HEIGHT if current else 0
+        new_index = min(results_listbox.size() - 1, (currentpage + 1) * RESULT_BOX_HEIGHT)
+        results_listbox.selection_clear(0, tk.END)
+        results_listbox.selection_set(new_index)
+        results_listbox.activate(new_index)
+        results_listbox.yview_scroll(RESULT_BOX_HEIGHT, "units")  # page down
+        return "break"  # Prevent default behavior
+
     def move_focus_to_search(event):
         key_entry.focus_force()
 
@@ -354,7 +387,7 @@ def open_search_for_emoticon_window():
     key_entry.pack(pady=5)
 
     # Create results listbox
-    results_listbox = tk.Listbox(search_window_ref, font=("Segoe UI Symbol", 12), width=30, height=20)
+    results_listbox = tk.Listbox(search_window_ref, font=("Segoe UI Symbol", 12), width=30, height=RESULT_BOX_HEIGHT)
     results_listbox.pack(pady=5)
 
     def save_emoticon(emoticon, keyword):
@@ -381,7 +414,7 @@ def open_search_for_emoticon_window():
                 emoticon = results_listbox.get(selection[0])
                 if emoticon:
                     if emoticon == "No results found":
-                        move_focus_to_search_if_at_top(None)
+                        cycle_to_bottom_if_at_top(None)
                     else:
                         pyperclip.copy(emoticon)
                         print(f"Copied '{emoticon}' to clipboard")
@@ -410,7 +443,10 @@ def open_search_for_emoticon_window():
                 key_entry.focus_force()
                 show_suggestions()
 
-    results_listbox.bind("<Up>", move_focus_to_search_if_at_top)
+    results_listbox.bind("<Up>", cycle_to_bottom_if_at_top)
+    results_listbox.bind("<Down>", cycle_to_top_if_at_bottom)
+    results_listbox.bind("<Left>", page_up)
+    results_listbox.bind("<Right>", page_down)
     results_listbox.bind("<Double-Button-1>", select)
     results_listbox.bind("<Return>", select)
     results_listbox.bind("<Delete>", remove_selected_emoticon)
@@ -448,6 +484,11 @@ def listen_for_hotkeys():
     Separate thread to handle hotkey monitoring without 
     interfering with the Tkinter mainloop.
     """
+    
+    open_search_for_emoticon_window() # For some reason the first time it opens, it doesn't focus properly. This is a workaround to open it once at the start.
+    #time.sleep(.5) 
+    search_window_ref.destroy()
+
     # Use individual hotkeys with a small sleep to prevent double-triggers
     while True:
         if keyboard.is_pressed('ctrl+alt+a'):
@@ -466,9 +507,6 @@ def listen_for_hotkeys():
 hotkey_thread = threading.Thread(target=listen_for_hotkeys, daemon=True)
 hotkey_thread.start()
 
-open_search_for_emoticon_window() # For some reason the first time it opens, it doesn't focus properly. This is a workaround to open it once at the start.
-#time.sleep(.5) 
-search_window_ref.destroy()
 
 print("EmoticonReplacer is running.")
 print("Hotkeys: Ctrl+Alt+A (Add), Ctrl+Alt+S (Search)")
