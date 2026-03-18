@@ -357,6 +357,10 @@ def open_search_for_emoticon_window():
             return "break"  # Prevent default behavior
 
     def page_up(event):
+        nonlocal showing_emoticons
+        if not showing_emoticons:
+            return  # Only page when showing emoticons, not keywords
+        
         current = results_listbox.curselection()
         currentpage = current[0] // RESULT_BOX_HEIGHT if current else 0
         new_index = max(0, (currentpage - 1) * RESULT_BOX_HEIGHT)
@@ -367,6 +371,10 @@ def open_search_for_emoticon_window():
         return "break"  # Prevent default behavior
     
     def page_down(event):
+        nonlocal showing_emoticons
+        if not showing_emoticons:
+            return  # Only page when showing emoticons, not keywords
+        
         current = results_listbox.curselection()
         currentpage = current[0] // RESULT_BOX_HEIGHT if current else 0
         new_index = min(results_listbox.size() - 1, (currentpage + 1) * RESULT_BOX_HEIGHT)
