@@ -424,17 +424,36 @@ def open_search_for_emoticon_window():
                     if emoticon == "No results found":
                         cycle_to_bottom_if_at_top(None)
                     else:
+                        clipboard_content = pyperclip.paste()
                         pyperclip.copy(emoticon)
                         print(f"Copied '{emoticon}' to clipboard")
                         save_emoticon(emoticon, key_entry.get().strip().lower())
                         search_window_ref.destroy()
-                        root.after(100, lambda: keyboard.send('ctrl+v'))
+                        root.after(100, lambda: (keyboard.send('ctrl+v'), print("Pasted emoticon")))
+                        root.after(200, lambda: (pyperclip.copy(clipboard_content),print("Restored original clipboard content")))
             else:
                 # If we're showing keywords, perform a search for that keyword
                 key_entry.delete(0, tk.END)
                 key_entry.insert(0, results_listbox.get(selection[0]))
                 perform_search()
     
+    def copy_selected_emoticon(event):
+        selection = results_listbox.curselection()
+        if showing_emoticons:
+            selection = results_listbox.curselection()
+            if selection:
+                emoticon = results_listbox.get(selection[0])
+                if emoticon and emoticon != "No results found":
+                    pyperclip.copy(emoticon)
+                    print(f"Copied '{emoticon}' to clipboard")
+                    search_window_ref.destroy()
+        else:
+            # If we're showing keywords, perform a search for that keyword
+            key_entry.delete(0, tk.END)
+            key_entry.insert(0, results_listbox.get(selection[0]))
+            perform_search()
+        return "break"  # Prevent default behavior
+
     def remove_selected_emoticon(event):
         if showing_emoticons:
             selection = results_listbox.curselection()
@@ -455,7 +474,7 @@ def open_search_for_emoticon_window():
     results_listbox.bind("<Down>", cycle_to_top_if_at_bottom)
     results_listbox.bind("<Left>", page_up)
     results_listbox.bind("<Right>", page_down)
-    results_listbox.bind("<Double-Button-1>", select)
+    results_listbox.bind("<Double-Button-1>", copy_selected_emoticon)
     results_listbox.bind("<Return>", select)
     results_listbox.bind("<Delete>", remove_selected_emoticon)
     results_listbox.bind("<BackSpace>", move_focus_to_search)
